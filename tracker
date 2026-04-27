@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thailand Money Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-ocean: #0a2a3a;
+            --ocean-mid: #0d3d52;
+            --teal-bright: #00b8d4;
+            --teal-light: #40e0d0;
+            --cyan-glow: #7fffd4;
+            --sand: #f5c97a;
+            --sand-light: #fdefc3;
+            --surface: rgba(0, 60, 80, 0.45);
+            --surface-light: rgba(0, 180, 200, 0.12);
+            --border: rgba(64, 224, 208, 0.2);
+            --text-primary: #e8f8f8;
+            --text-muted: rgba(180, 230, 235, 0.6);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--deep-ocean);
+            min-height: 100vh;
+            padding: 20px 20px 48px;
+            color: var(--text-primary);
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse 120% 60% at 50% 100%, rgba(0,184,212,0.18) 0%, transparent 60%),
+                radial-gradient(ellipse 80% 40% at 20% 80%, rgba(0,120,160,0.25) 0%, transparent 50%),
+                linear-gradient(180deg, #071e2c 0%, #0a2a3a 30%, #0d3d52 60%, #0a4a50 100%);
+            pointer-events: none; z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed; bottom: 0; left: -50%;
+            width: 200%; height: 300px;
+            background: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(64,224,208,0.04) 40px, rgba(64,224,208,0.04) 80px);
+            animation: ripple 8s linear infinite;
+            pointer-events: none; z-index: 0;
+        }
+        @keyframes ripple { from { transform: translateX(0) skewY(-1deg); } to { transform: translateX(80px) skewY(-1deg); } }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+        .container { max-width: 420px; margin: 0 auto; position: relative; z-index: 1; }
+
+        .header { text-align: center; padding: 32px 20px 24px; }
+        .header-flag { font-size: 28px; margin-bottom: 8px; display: block; animation: float 3s ease-in-out infinite; }
+        .header h1 {
+            font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700;
+            background: linear-gradient(135deg, var(--teal-light) 0%, var(--sand-light) 60%, var(--sand) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin-bottom: 6px;
+        }
+        .header-sub { font-size: 12px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; font-weight: 300; }
+
+        .balance-card {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+            padding: 28px 24px 22px; position: relative; backdrop-filter: blur(20px); overflow: hidden; margin-bottom: 14px;
+        }
+        .balance-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--teal-light), var(--sand), transparent);
+        }
+        .balance-card::after {
+            content: ''; position: absolute; top: -60px; right: -60px; width: 180px; height: 180px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,184,212,0.12) 0%, transparent 70%); pointer-events: none;
+        }
+        .card-actions { position: absolute; top: 18px; right: 18px; display: flex; gap: 10px; }
+        .icon-btn {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--surface-light); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--teal-light); transition: all 0.25s ease;
+        }
+        .icon-btn:hover { background: rgba(0,184,212,0.25); border-color: var(--teal-bright); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,184,212,0.3); }
+        .balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 8px; position: relative; }
+        .balance-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+        .balance-amount {
+            font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; line-height: 1;
+            background: linear-gradient(135deg, var(--teal-light), var(--cyan-glow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .balance-amount.inr { background: linear-gradient(135deg, var(--sand), var(--sand-light)); -webkit-background-clip: text; background-clip: text; }
+        .balance-currency { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .rate-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--surface-light); border: 1px solid var(--border);
+            border-radius: 20px; padding: 5px 12px; font-size: 11px; color: var(--text-muted); margin-top: 14px;
+        }
+        .rate-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-light); }
+
+        .section { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; margin-bottom: 12px; overflow: hidden; backdrop-filter: blur(20px); }
+        .section-header { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s; user-select: none; }
+        .section-header:hover { background: var(--surface-light); }
+        .section-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+        .section-icon { width: 32px; height: 32px; border-radius: 10px; background: var(--surface-light); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+        .chevron { color: var(--text-muted); transition: transform 0.3s; display: flex; align-items: center; }
+        .chevron.open { transform: rotate(180deg); }
+        .section-body { max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
+        .section-body.open { max-height: 700px; }
+        .section-inner { padding: 4px 20px 20px; }
+
+        .field { margin-bottom: 16px; }
+        .field-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; display: block; }
+        .field-input, .field-select {
+            width: 100%; padding: 13px 16px;
+            background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text-primary);
+            font-size: 15px; font-family: 'DM Sans', sans-serif;
+            transition: all 0.2s; -webkit-appearance: none;
+        }
+        .field-input::placeholder { color: rgba(180,230,235,0.3); }
+        .field-input:focus, .field-select:focus { outline: none; border-color: var(--teal-bright); box-shadow: 0 0 0 3px rgba(0,184,212,0.15); background: rgba(0,184,212,0.05); }
+        .field-select option { background: #0a2a3a; }
+        .error-msg { font-size: 12px; color: #ff7675; margin-top: 6px; padding: 8px 12px; background: rgba(255,118,117,0.1); border-radius: 8px; border: 1px solid rgba(255,118,117,0.2); display: none; }
+        .success-msg { font-size: 12px; color: var(--teal-light); margin-top: 8px; padding: 8px 12px; background: rgba(64,224,208,0.1); border-radius: 8px; border: 1px solid rgba(64,224,208,0.2); display: none; }
+        .btn {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, var(--teal-bright) 0%, var(--teal-light) 50%, var(--sand) 100%);
+            color: var(--deep-ocean); border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+            cursor: pointer; letter-spacing: 0.5px; transition: all 0.25s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,184,212,0.4); }
+        .btn:active { transform: translateY(0); }
+
+        .conv-result { margin-top: 14px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border); text-align: center; display: none; }
+        .conv-amount { font-family: 'Playfair Display', serif; font-size: 24px; background: linear-gradient(135deg, var(--sand), var(--sand-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .conv-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: linear-gradient(160deg, #0d3d52 0%, #071e2c 100%); border: 1px solid var(--border); border-radius: 24px; width: 92%; max-width: 480px; max-height: 88vh; overflow-y: auto; }
+        .modal-top { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #0d3d52; border-radius: 24px 24px 0 0; z-index: 1; }
+        .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; background: linear-gradient(135deg, var(--teal-light), var(--sand-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .modal-close { width: 30px; height: 30px; border-radius: 50%; background: var(--surface-light); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; line-height: 1; }
+        .modal-close:hover { background: rgba(255,118,117,0.2); color: #ff7675; }
+        .modal-body { padding: 20px; }
+
+        /* TOP-UP MODE TOGGLE */
+        .mode-toggle { display: flex; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; }
+        .mode-btn { flex: 1; padding: 9px 8px; border: none; border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--text-muted); }
+        .mode-btn.active { background: linear-gradient(135deg, var(--teal-bright), var(--teal-light)); color: var(--deep-ocean); font-weight: 700; }
+        .mode-panel { display: none; }
+        .mode-panel.active { display: block; }
+        .calc-preview { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; color: var(--text-muted); line-height: 1.9; }
+        .calc-preview strong { color: var(--text-primary); }
+
+        /* TABS */
+        .tabs { display: flex; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; }
+        .tab { flex: 1; padding: 9px 12px; border: none; border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--text-muted); }
+        .tab.active { background: linear-gradient(135deg, var(--teal-bright), var(--teal-light)); color: var(--deep-ocean); font-weight: 700; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        .txn-item { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+        .txn-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        .txn-cat { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+        .txn-inr { font-weight: 700; font-size: 15px; background: linear-gradient(135deg, var(--sand), var(--sand-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .txn-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .txn-meta { display: flex; align-items: center; justify-content: space-between; }
+        .txn-thb { font-size: 11px; color: var(--text-muted); }
+        .txn-actions { display: flex; gap: 8px; }
+        .txn-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-light); color: var(--text-muted); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; line-height: 1; }
+        .txn-btn.edit:hover { background: rgba(245,201,122,0.2); color: var(--sand); border-color: var(--sand); }
+        .txn-btn.del:hover { background: rgba(255,118,117,0.2); color: #ff7675; border-color: #ff7675; }
+        .edit-form { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .edit-form.show { display: block; }
+        .edit-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .edit-input, .edit-select { flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-family: 'DM Sans', sans-serif; }
+        .edit-input-full { width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
+        .edit-actions { display: flex; gap: 8px; }
+        .edit-btn { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+        .edit-save { background: linear-gradient(135deg, var(--teal-bright), var(--teal-light)); color: var(--deep-ocean); }
+        .edit-cancel { background: var(--surface-light); color: var(--text-muted); border: 1px solid var(--border); }
+        .no-txn { text-align: center; color: var(--text-muted); padding: 30px 0; font-size: 13px; }
+
+        .chart-wrap { display: flex; justify-content: center; margin: 10px 0 16px; }
+        .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        .cat-card { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+        .cat-name { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+        .cat-amt { font-family: 'Playfair Display', serif; font-size: 16px; background: linear-gradient(135deg, var(--teal-light), var(--sand)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .cat-pct { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+        .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+        .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .anal-total { text-align: center; margin-bottom: 8px; padding: 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; }
+        .anal-total-label { font-size: 10px; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; }
+        .anal-total-amt { font-family: 'Playfair Display', serif; font-size: 20px; background: linear-gradient(135deg, var(--sand), var(--sand-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        .confirm-modal { background: linear-gradient(160deg, #0d3d52 0%, #071e2c 100%); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 88%; max-width: 360px; text-align: center; }
+        .confirm-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--text-primary); margin-bottom: 12px; }
+        .confirm-body { font-size: 13px; line-height: 1.9; color: var(--text-muted); margin-bottom: 20px; }
+        .confirm-body strong { color: var(--text-primary); }
+        .confirm-actions { display: flex; gap: 12px; justify-content: center; }
+        .confirm-yes { padding: 10px 24px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--teal-bright), var(--teal-light)); color: var(--deep-ocean); font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+        .confirm-no { padding: 10px 24px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-light); color: var(--text-muted); font-family: 'DM Sans', sans-serif; cursor: pointer; }
+        .confirm-yes:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,184,212,0.3); }
+
+        .offline-badge { display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(245,201,122,0.12); border: 1px solid rgba(245,201,122,0.4); border-radius: 20px; padding: 6px 14px; font-size: 11px; color: var(--sand); z-index: 200; gap: 6px; align-items: center; white-space: nowrap; }
+        .offline-badge.show { display: flex; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <span class="header-flag">🇹🇭</span>
+        <h1>Thailand Tracker</h1>
+        <div class="header-sub">Phuket · Apr 30 – May 4</div>
+    </div>
+
+    <div class="balance-card">
+        <div class="card-actions">
+            <div class="icon-btn" onclick="openTopUpModal()" title="Add / Update Balance">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </div>
+            <div class="icon-btn" onclick="openHistoryModal()" title="History & Analytics">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+        </div>
+
+        <div class="balance-grid">
+            <div>
+                <div class="balance-label">THB Balance</div>
+                <div class="balance-amount" id="thb-balance">15,000</div>
+                <div class="balance-currency">Thai Baht</div>
+            </div>
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1px;height:52px;background:var(--border);"></div>
+            <div style="padding-left:20px;">
+                <div class="balance-label">INR Equivalent</div>
+                <div class="balance-amount inr" id="inr-balance">43,650</div>
+                <div class="balance-currency">Indian Rupee</div>
+            </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;">
+            <div class="rate-tag">
+                <div class="rate-dot"></div>
+                <span id="rate-display">1 THB = ₹2.91</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header" onclick="toggleSection('spend')">
+            <div class="section-title">
+                <div class="section-icon">💸</div>
+                Record Spending
+            </div>
+            <div class="chevron" id="spend-chevron">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+        </div>
+        <div class="section-body" id="spend-body">
+            <div class="section-inner">
+                <div class="field">
+                    <label class="field-label">Amount (THB)</label>
+                    <input type="number" class="field-input" id="spend-amount" placeholder="e.g. 350">
+                    <div class="error-msg" id="amount-error"></div>
+                </div>
+                <div class="field">
+                    <label class="field-label">Category</label>
+                    <select class="field-select" id="spend-category">
+                        <option value="Food">🍜 Food & Drinks</option>
+                        <option value="Transport">🛺 Transport</option>
+                        <option value="Accommodation">🏝️ Accommodation</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Activities">🤿 Activities & Tours</option>
+                        <option value="Other">📦 Other</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Description (optional)</label>
+                    <input type="text" class="field-input" id="spend-description" placeholder="e.g. Pad Thai at Patong beach">
+                </div>
+                <button class="btn" onclick="recordSpending()">Record Spending</button>
+                <div class="success-msg" id="success-msg"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header" onclick="toggleSection('convert')">
+            <div class="section-title">
+                <div class="section-icon">💱</div>
+                Quick Converter
+            </div>
+            <div class="chevron" id="convert-chevron">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+        </div>
+        <div class="section-body" id="convert-body">
+            <div class="section-inner">
+                <div class="field">
+                    <label class="field-label">THB Amount</label>
+                    <input type="number" class="field-input" id="convert-amount" placeholder="Enter THB">
+                </div>
+                <button class="btn" onclick="convertCurrency()">Convert to INR</button>
+                <div class="conv-result" id="conv-result">
+                    <div class="conv-amount" id="conv-value"></div>
+                    <div class="conv-label">Indian Rupees</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="offline-badge" id="offline-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+    Offline — data saved locally
+</div>
+
+<!-- TOP UP MODAL -->
+<div class="modal-overlay" id="topUpOverlay">
+    <div class="modal">
+        <div class="modal-top">
+            <span class="modal-title">Update Balance</span>
+            <button class="modal-close" onclick="closeTopUpModal()">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="mode-btn-inr" onclick="switchTopUpMode('inr')">INR → THB</button>
+                <button class="mode-btn" id="mode-btn-thb" onclick="switchTopUpMode('thb')">Set THB directly</button>
+            </div>
+
+            <div class="mode-panel active" id="panel-inr">
+                <div class="field">
+                    <label class="field-label">INR amount to convert</label>
+                    <input type="number" class="field-input" id="inr-topup-amt" placeholder="e.g. 5000" oninput="calcThbPreview()">
+                </div>
+                <div class="field">
+                    <label class="field-label">Rate you got (INR per 1 THB)</label>
+                    <input type="number" class="field-input" id="inr-topup-rate" step="0.01" placeholder="e.g. 2.85" oninput="calcThbPreview()">
+                </div>
+                <div class="calc-preview" id="inr-preview">Enter amount and rate to see conversion</div>
+                <button class="btn" onclick="showTopUpConfirm('inr')">Add to Balance</button>
+            </div>
+
+            <div class="mode-panel" id="panel-thb">
+                <div class="field">
+                    <label class="field-label">New total THB balance</label>
+                    <input type="number" class="field-input" id="thb-topup-amt" placeholder="e.g. 18000">
+                </div>
+                <div class="field">
+                    <label class="field-label">Display rate (1 THB = ? INR)</label>
+                    <input type="number" class="field-input" id="thb-topup-rate" step="0.001" placeholder="2.91">
+                </div>
+                <button class="btn" onclick="showTopUpConfirm('thb')">Update Balance</button>
+            </div>
+
+            <div class="error-msg" id="topup-error" style="margin-top:12px;"></div>
+            <div class="success-msg" id="topup-success" style="margin-top:12px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmOverlay">
+    <div class="confirm-modal">
+        <div class="confirm-title">Confirm Update</div>
+        <div class="confirm-body" id="confirm-text"></div>
+        <div class="confirm-actions">
+            <button class="confirm-yes" onclick="confirmTopUp()">Confirm</button>
+            <button class="confirm-no" onclick="closeConfirmModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="historyOverlay">
+    <div class="modal">
+        <div class="modal-top">
+            <span class="modal-title">Money Tracker</span>
+            <button class="modal-close" onclick="closeHistoryModal()">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+            <div class="tabs">
+                <button class="tab active" id="tab-txn" onclick="switchTab('txn')">Transactions</button>
+                <button class="tab" id="tab-anal" onclick="switchTab('anal')">Analytics</button>
+            </div>
+            <div class="tab-pane active" id="pane-txn">
+                <div id="txn-list"></div>
+            </div>
+            <div class="tab-pane" id="pane-anal">
+                <div class="anal-total">
+                    <div class="anal-total-label">Total Spent</div>
+                    <div class="anal-total-amt" id="anal-total-amt">—</div>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="pieChart" width="200" height="200"></canvas>
+                </div>
+                <div class="legend" id="chartLegend"></div>
+                <div class="cat-grid" id="catGrid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let RATE = 2.91;
+    let balance = 15000;
+    let txns = [];
+    let pendingTopUp = null;
+    let topUpMode = 'inr';
+
+    const CAT_COLORS = {
+        Food: '#00b8d4', Transport: '#f5c97a', Accommodation: '#40e0d0',
+        Shopping: '#a8edea', Activities: '#fdefc3', Other: '#7fb3d3'
+    };
+
+    // ── localStorage ───────────────────────────────────────────────────────
+    function save() {
+        try { localStorage.setItem('th_tracker_v2', JSON.stringify({ RATE, balance, txns })); } catch(e) {}
+    }
+    function load() {
+        try {
+            const d = JSON.parse(localStorage.getItem('th_tracker_v2'));
+            if (d) { RATE = d.RATE || 2.91; balance = (d.balance !== undefined) ? d.balance : 15000; txns = d.txns || []; }
+        } catch(e) {}
+    }
+
+    // ── Offline ────────────────────────────────────────────────────────────
+    function updateOfflineBadge() {
+        document.getElementById('offline-badge').classList.toggle('show', !navigator.onLine);
+    }
+    window.addEventListener('online', updateOfflineBadge);
+    window.addEventListener('offline', updateOfflineBadge);
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+
+    function updateDisplay() {
+        document.getElementById('thb-balance').textContent = fmt(balance);
+        document.getElementById('inr-balance').textContent = fmt(balance * RATE);
+        document.getElementById('rate-display').textContent = '1 THB = ₹' + RATE;
+    }
+
+    function toggleSection(name) {
+        const body = document.getElementById(name + '-body');
+        const chev = document.getElementById(name + '-chevron');
+        const isOpen = body.classList.contains('open');
+        body.classList.toggle('open', !isOpen);
+        chev.classList.toggle('open', !isOpen);
+    }
+
+    // ── Spending ───────────────────────────────────────────────────────────
+    function recordSpending() {
+        const amtEl = document.getElementById('spend-amount');
+        const errEl = document.getElementById('amount-error');
+        const sucEl = document.getElementById('success-msg');
+        errEl.style.display = 'none'; sucEl.style.display = 'none';
+
+        const amt = parseFloat(amtEl.value);
+        const cat = document.getElementById('spend-category').value;
+        const desc = document.getElementById('spend-description').value.trim() || cat;
+
+        if (!amt || amt <= 0) { errEl.textContent = 'Enter a valid amount'; errEl.style.display = 'block'; return; }
+        if (amt > balance) { errEl.textContent = 'Only ฿' + fmt(balance) + ' left'; errEl.style.display = 'block'; return; }
+
+        balance -= amt;
+        txns.unshift({
+            id: Date.now(), amount: amt, category: cat, description: desc,
+            date: new Date().toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+        });
+
+        save(); updateDisplay();
+        amtEl.value = '';
+        document.getElementById('spend-description').value = '';
+        sucEl.textContent = '✓ Recorded ฿' + fmt(amt) + ' for ' + cat;
+        sucEl.style.display = 'block';
+        setTimeout(() => sucEl.style.display = 'none', 3000);
+    }
+
+    // ── Converter ──────────────────────────────────────────────────────────
+    function convertCurrency() {
+        const amt = parseFloat(document.getElementById('convert-amount').value);
+        if (!amt || amt <= 0) { alert('Enter a valid amount'); return; }
+        document.getElementById('conv-value').textContent = '₹' + fmt(amt * RATE);
+        document.getElementById('conv-result').style.display = 'block';
+    }
+
+    // ── Top Up ─────────────────────────────────────────────────────────────
+    function openTopUpModal() {
+        document.getElementById('thb-topup-rate').value = RATE;
+        document.getElementById('topup-error').style.display = 'none';
+        document.getElementById('topup-success').style.display = 'none';
+        document.getElementById('topUpOverlay').classList.add('open');
+    }
+
+    function closeTopUpModal() {
+        document.getElementById('topUpOverlay').classList.remove('open');
+        document.getElementById('inr-topup-amt').value = '';
+        document.getElementById('inr-topup-rate').value = '';
+        document.getElementById('inr-preview').textContent = 'Enter amount and rate to see conversion';
+        document.getElementById('topup-error').style.display = 'none';
+        document.getElementById('topup-success').style.display = 'none';
+    }
+
+    function switchTopUpMode(mode) {
+        topUpMode = mode;
+        document.getElementById('mode-btn-inr').classList.toggle('active', mode === 'inr');
+        document.getElementById('mode-btn-thb').classList.toggle('active', mode === 'thb');
+        document.getElementById('panel-inr').classList.toggle('active', mode === 'inr');
+        document.getElementById('panel-thb').classList.toggle('active', mode === 'thb');
+        document.getElementById('topup-error').style.display = 'none';
+    }
+
+    function calcThbPreview() {
+        const inrAmt = parseFloat(document.getElementById('inr-topup-amt').value);
+        const rate = parseFloat(document.getElementById('inr-topup-rate').value);
+        const prev = document.getElementById('inr-preview');
+        if (!inrAmt || !rate || inrAmt <= 0 || rate <= 0) {
+            prev.innerHTML = 'Enter amount and rate to see conversion';
+            return;
+        }
+        const thbGet = inrAmt / rate;
+        prev.innerHTML =
+            '<strong>₹' + fmt(inrAmt) + '</strong> ÷ ₹' + rate + '/THB = <strong>฿' + fmt(thbGet) + '</strong><br>' +
+            'New balance: <strong>฿' + fmt(balance + thbGet) + '</strong>';
+    }
+
+    function showTopUpConfirm(mode) {
+        const errEl = document.getElementById('topup-error');
+        errEl.style.display = 'none';
+
+        if (mode === 'inr') {
+            const inrAmt = parseFloat(document.getElementById('inr-topup-amt').value);
+            const rate = parseFloat(document.getElementById('inr-topup-rate').value);
+            if (!inrAmt || inrAmt <= 0) { errEl.textContent = 'Enter a valid INR amount'; errEl.style.display = 'block'; return; }
+            if (!rate || rate <= 0) { errEl.textContent = 'Enter a valid exchange rate'; errEl.style.display = 'block'; return; }
+            const thbAdded = inrAmt / rate;
+            pendingTopUp = { mode: 'inr', newBalance: balance + thbAdded, newRate: RATE };
+            document.getElementById('confirm-text').innerHTML =
+                '<strong>INR spent:</strong> ₹' + fmt(inrAmt) + '<br>' +
+                '<strong>Rate used:</strong> ₹' + rate + ' per THB<br>' +
+                '<strong>THB added:</strong> +฿' + fmt(thbAdded) + '<br>' +
+                '<strong>New balance:</strong> ฿' + fmt(balance + thbAdded);
+        } else {
+            const newBal = parseFloat(document.getElementById('thb-topup-amt').value);
+            const newRate = parseFloat(document.getElementById('thb-topup-rate').value);
+            if (isNaN(newBal) || newBal < 0) { errEl.textContent = 'Enter a valid THB balance'; errEl.style.display = 'block'; return; }
+            if (!newRate || newRate <= 0) { errEl.textContent = 'Enter a valid rate'; errEl.style.display = 'block'; return; }
+            const diff = newBal - balance;
+            pendingTopUp = { mode: 'thb', newBalance: newBal, newRate: newRate };
+            document.getElementById('confirm-text').innerHTML =
+                '<strong>New balance:</strong> ฿' + fmt(newBal) + '<br>' +
+                '<strong>Change:</strong> ' + (diff >= 0 ? '+' : '') + '฿' + fmt(diff) + '<br>' +
+                '<strong>Display rate:</strong> 1 THB = ₹' + newRate + '<br>' +
+                '<strong>INR value:</strong> ₹' + fmt(newBal * newRate);
+        }
+        document.getElementById('confirmOverlay').classList.add('open');
+    }
+
+    function confirmTopUp() {
+        if (!pendingTopUp) return;
+        balance = pendingTopUp.newBalance;
+        RATE = pendingTopUp.newRate;
+        save(); updateDisplay();
+        closeConfirmModal();
+        const sucEl = document.getElementById('topup-success');
+        sucEl.textContent = '✓ Balance updated to ฿' + fmt(balance);
+        sucEl.style.display = 'block';
+        setTimeout(() => { sucEl.style.display = 'none'; closeTopUpModal(); }, 2000);
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmOverlay').classList.remove('open');
+        pendingTopUp = null;
+    }
+
+    // ── History ────────────────────────────────────────────────────────────
+    function openHistoryModal() {
+        document.getElementById('historyOverlay').classList.add('open');
+        renderTxns();
+        renderAnalytics();
+        // also draw pie if analytics tab is already visible
+        if (document.getElementById('pane-anal').classList.contains('active')) setTimeout(drawPie, 80);
+    }
+    function closeHistoryModal() { document.getElementById('historyOverlay').classList.remove('open'); }
+
+    function switchTab(name) {
+        ['txn','anal'].forEach(t => {
+            document.getElementById('tab-' + t).classList.toggle('active', t === name);
+            document.getElementById('pane-' + t).classList.toggle('active', t === name);
+        });
+        if (name === 'anal') { renderAnalytics(); setTimeout(drawPie, 80); }
+    }
+
+    function renderTxns() {
+        const el = document.getElementById('txn-list');
+        if (!txns.length) { el.innerHTML = '<div class="no-txn">No transactions recorded yet</div>'; return; }
+        el.innerHTML = txns.map((item, i) =>
+            '<div class="txn-item" id="txn-' + i + '">' +
+                '<div class="txn-top">' +
+                    '<div class="txn-cat">' + item.category + '</div>' +
+                    '<div class="txn-inr">₹' + fmt(item.amount * RATE) + '</div>' +
+                '</div>' +
+                '<div class="txn-desc">' + item.description + '</div>' +
+                '<div class="txn-meta">' +
+                    '<div class="txn-thb">฿' + fmt(item.amount) + ' · ' + item.date + '</div>' +
+                    '<div class="txn-actions">' +
+                        '<button class="txn-btn edit" onclick="editTxn(' + i + ')">✏</button>' +
+                        '<button class="txn-btn del" onclick="deleteTxn(' + i + ')">✕</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="edit-form" id="ef-' + i + '">' +
+                    '<div class="edit-row">' +
+                        '<input type="number" class="edit-input" id="ea-' + i + '" value="' + item.amount + '">' +
+                        '<select class="edit-select" id="ec-' + i + '">' +
+                            ['Food','Transport','Accommodation','Shopping','Activities','Other'].map(c =>
+                                '<option value="' + c + '"' + (item.category===c?' selected':'') + '>' + c + '</option>'
+                            ).join('') +
+                        '</select>' +
+                    '</div>' +
+                    '<input type="text" class="edit-input-full" id="ed-' + i + '" value="' + item.description + '">' +
+                    '<div class="edit-actions">' +
+                        '<button class="edit-btn edit-save" onclick="saveTxn(' + i + ')">Save</button>' +
+                        '<button class="edit-btn edit-cancel" onclick="cancelEdit(' + i + ')">Cancel</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        ).join('');
+    }
+
+    function editTxn(i) {
+        document.querySelectorAll('.edit-form').forEach(f => f.classList.remove('show'));
+        document.getElementById('ef-' + i).classList.add('show');
+    }
+    function cancelEdit(i) { document.getElementById('ef-' + i).classList.remove('show'); }
+
+    function saveTxn(i) {
+        const newAmt = parseFloat(document.getElementById('ea-' + i).value);
+        if (!newAmt || newAmt <= 0) { alert('Enter valid amount'); return; }
+        const diff = newAmt - txns[i].amount;
+        if (diff > balance) { alert('Only ฿' + fmt(balance) + ' available'); return; }
+        balance -= diff;
+        txns[i] = { ...txns[i], amount: newAmt, category: document.getElementById('ec-' + i).value, description: document.getElementById('ed-' + i).value };
+        save(); updateDisplay(); renderTxns(); renderAnalytics();
+        if (document.getElementById('pane-anal').classList.contains('active')) drawPie();
+    }
+
+    function deleteTxn(i) {
+        if (!confirm('Delete this transaction?')) return;
+        balance += txns[i].amount;
+        txns.splice(i, 1);
+        save(); updateDisplay(); renderTxns(); renderAnalytics();
+        if (document.getElementById('pane-anal').classList.contains('active')) drawPie();
+    }
+
+    // ── Analytics ──────────────────────────────────────────────────────────
+    function renderAnalytics() {
+        const cats = {};
+        const total = txns.reduce((s, x) => s + x.amount, 0);
+        txns.forEach(x => { cats[x.category] = (cats[x.category] || 0) + x.amount; });
+
+        document.getElementById('anal-total-amt').textContent =
+            total > 0 ? ('฿' + fmt(total) + '  ·  ₹' + fmt(total * RATE)) : '—';
+
+        const grid = document.getElementById('catGrid');
+        if (!total) {
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:10px 0;font-size:13px;">No spending data yet</div>';
+            return;
+        }
+        grid.innerHTML = Object.entries(cats).map(([cat, amt]) =>
+            '<div class="cat-card">' +
+                '<div class="cat-name">' + cat + '</div>' +
+                '<div class="cat-amt">₹' + fmt(amt * RATE) + '</div>' +
+                '<div class="cat-pct">' + Math.round(amt/total*100) + '% · ฿' + fmt(amt) + '</div>' +
+            '</div>'
+        ).join('');
+    }
+
+    function drawPie() {
+        const canvas = document.getElementById('pieChart');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 200, 200);
+
+        const cats = {};
+        const total = txns.reduce((s, x) => s + x.amount, 0);
+        txns.forEach(x => { cats[x.category] = (cats[x.category] || 0) + x.amount; });
+
+        if (!total) {
+            ctx.fillStyle = 'rgba(180,230,235,0.3)';
+            ctx.font = '13px DM Sans';
+            ctx.textAlign = 'center';
+            ctx.fillText('No data yet', 100, 105);
+            document.getElementById('chartLegend').innerHTML = '';
+            return;
+        }
+
+        let angle = -Math.PI / 2;
+        Object.entries(cats).forEach(([cat, amt]) => {
+            const slice = (amt / total) * 2 * Math.PI;
+            ctx.beginPath();
+            ctx.moveTo(100, 100);
+            ctx.arc(100, 100, 85, angle, angle + slice);
+            ctx.fillStyle = CAT_COLORS[cat] || '#7fb3d3';
+            ctx.fill();
+            ctx.strokeStyle = '#071e2c';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            angle += slice;
+        });
+
+        ctx.beginPath(); ctx.arc(100, 100, 38, 0, 2 * Math.PI);
+        ctx.fillStyle = '#0d3d52'; ctx.fill();
+        ctx.fillStyle = 'rgba(180,230,235,0.85)';
+        ctx.font = 'bold 11px DM Sans'; ctx.textAlign = 'center';
+        ctx.fillText('฿' + fmt(total), 100, 97);
+        ctx.font = '10px DM Sans'; ctx.fillStyle = 'rgba(180,230,235,0.5)';
+        ctx.fillText('spent', 100, 111);
+
+        document.getElementById('chartLegend').innerHTML = Object.entries(cats).map(([cat]) =>
+            '<div class="leg-item"><div class="leg-dot" style="background:' + (CAT_COLORS[cat]||'#7fb3d3') + '"></div>' + cat + '</div>'
+        ).join('');
+    }
+
+    // ── Backdrop close ─────────────────────────────────────────────────────
+    ['topUpOverlay','confirmOverlay','historyOverlay'].forEach(function(id) {
+        document.getElementById(id).addEventListener('click', function(e) {
+            if (e.target !== this) return;
+            if (id === 'topUpOverlay') closeTopUpModal();
+            else if (id === 'confirmOverlay') closeConfirmModal();
+            else closeHistoryModal();
+        });
+    });
+
+    document.getElementById('spend-amount').addEventListener('keypress', function(e) { if (e.key === 'Enter') recordSpending(); });
+    document.getElementById('convert-amount').addEventListener('keypress', function(e) { if (e.key === 'Enter') convertCurrency(); });
+
+    load();
+    updateDisplay();
+    updateOfflineBadge();
+</script>
+</body>
+</html>
